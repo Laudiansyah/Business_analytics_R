@@ -1,0 +1,98 @@
+#Tujuan : Melakukan analisis pada pada bisnis Boats Victory
+#Target : Grafik Deskriptif, Hasil Korelasi, dan Hasil Regresi
+
+install.packages("readxl")
+install.packages("readr")
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("scales")
+install.packages("stats")
+
+library(readxl)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(stats)
+
+data <- read_csv("E:/project github/(R) Boat/Boats Victory_dataset.csv")
+head(data)
+
+#Number 1 Part A
+data$condition <- factor(data$condition, labels = c("New", "Used")) 
+data$numEngines <- factor(data$numEngines)
+data_count <- data %>% group_by(condition, numEngines) %>% summarize(count = n()) %>% 
+  mutate(percentage = count / sum(count) * 100)
+
+ggplot(data_count, aes(x = condition, y = count, fill = numEngines)) + 
+  geom_bar(position = "dodge", stat = "identity") + 
+  geom_text(aes(label = paste0(count, " (", round(percentage, 1), "%)")), 
+  position = position_dodge(width = 0.9), vjust = -0.5, size = 4.5, color = "black") +
+  labs(title = "Distribution of Boats by Condition and Number of Engines", 
+  x = "Condition", y = "Count", fill = "Number of Engines") + theme_minimal() + 
+  theme(legend.position = "bottom")+ theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#Number 1 Part B
+categorize_years <- 
+  function(year) {if (year >= 1941 & year <= 1950) {return("1941-1950")
+  } else if (year >= 1951 & year <= 1960) {return("1951-1960")
+  } else if (year >= 1961 & year <= 1970) {return("1961-1970") 
+  } else if (year >= 1971 & year <= 1980) {return("1971-1980")
+  } else if (year >= 1981 & year <= 1990) {return("1981-1990")
+  } else if (year >= 1991 & year <= 2000) {return("1991-2000")
+  } else if (year >= 2001 & year <= 2010) {return("2001-2010")
+  } else if (year >= 2011 & year <= 2020) {return("2011-2020")
+  } else {return("Other")}}
+
+data$year_category <- sapply(data$year, categorize_years)
+data_summary <- data %>% group_by(year_category) %>% summarize(count = n()) %>% 
+  mutate(percentage = count / sum(count) * 100)
+
+ggplot(data_summary, aes(x = year_category, y = count, fill = year_category)) +
+  geom_bar(stat = "identity") + 
+  geom_text(aes(label = paste0(count, " (", round(percentage, 1),"%)")), 
+  position = position_dodge(width = 0.9), vjust = -0.5, size = 5, color = "black")  + 
+  labs(x = "Year Range", y = "Count", title = "Count of Data by Year Range") + theme_minimal()
+
+#Number 2
+#testing
+model <- lm(price ~ year + condition + length_ft + beam_ft + 
+              dryWeight_lb + numEngines + totalHP, data = data)
+summary(model)
+
+#answer
+model2 <- lm(price ~ year+ totalHP + dryWeight_lb, data = data)
+summary(model2)
+
+#Number 3
+data <- read_csv("E:/project github/(R) Boat/Boats Victory_dataset.csv")
+scaled_data <- scale(data)
+set.seed(123)
+kmeans_model <- kmeans(scaled_data, centers = 4)
+data$cluster <- kmeans_model$cluster
+
+ggplot(data, aes(x = year, y = price, color = factor(cluster))) + geom_point() + 
+  labs(title = "Clusters of Boats by Year and Price", x = "Year",y = "Price") + theme_minimal() + 
+  theme(legend.position = "bottom")+ scale_y_continuous(labels = scales::comma)
+
+#Number 4 Part C
+data_scaled <- scale(data)
+set.seed(123) 
+k <- 4 
+kmeans_model <- kmeans(data_scaled, centers = k)
+data$cluster <- as.factor(kmeans_model$cluster)
+#Length_ft
+ggplot(data, aes(x = length_ft, y = price, color = cluster)) + geom_point() + 
+  labs(title = "Clustering of Boats by Length (Feet) and Price", x = "Length (Feet)", 
+  y = "Price", color = "Cluster") + scale_y_continuous(labels = scales::comma)
+
+#Nomor 4 PART C
+#totalhp
+ggplot(data, aes(x = totalHP, y = price, color = cluster)) + geom_point() + 
+  labs(title = "Clustering of Boats by TotalHP and Price", x = "TotalHP", y = "Price", 
+       color = "Cluster") + scale_y_continuous(labels = scales::comma)
+
+#export report
+install.packages("writexl")
+library(writexl)
+write_xlsx(data, "Boats_Victory_Report.xlsx")
